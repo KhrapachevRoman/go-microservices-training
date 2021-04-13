@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/runtime/middleware"
+	gohandlres "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -45,13 +46,16 @@ func main() {
 	opts := middleware.RedocOpts{SpecURL: "/swagger.yaml"}
 	sh := middleware.Redoc(opts, nil)
 
+	// CORS
+	ch := gohandlres.CORS(gohandlres.AllowedOrigins([]string{"*"}))
+
 	getR.Handle("/docs", sh)
 	getR.Handle("/swagger.yaml", http.FileServer(http.Dir("./")))
 
 	// create a new server
 	s := &http.Server{
 		Addr:         ":9090",           // configure the bind address
-		Handler:      sm,                // set the defoult handler
+		Handler:      ch(sm),            // set the defoult handler
 		ErrorLog:     l,                 // set the logger for the server
 		IdleTimeout:  120 * time.Second, // max time for connections using TCP Keep-Alive
 		ReadTimeout:  5 * time.Second,   // max time to read request from the client
