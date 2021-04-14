@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+
+	"time"
+
 	"product-api/data"
 	"product-api/handlers"
-	"time"
 
 	"github.com/go-openapi/runtime/middleware"
 	gohandlres "github.com/gorilla/handlers"

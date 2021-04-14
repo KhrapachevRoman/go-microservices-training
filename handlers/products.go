@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"product-api/data"
+
 	"strconv"
+
+	"product-api/data"
 
 	"github.com/gorilla/mux"
 )
