@@ -1,6 +1,12 @@
 package data
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"log"
+
+	protos "github.com/KhrapachevRoman/go-gRPC-testing/protos/currency"
+)
 
 // ErrProductNotFound is an error raised when a product can not be found in the database
 var ErrProductNotFound = fmt.Errorf("Product not found")
@@ -42,21 +48,56 @@ type Product struct {
 // Products defines a slice of Product
 type Products []*Product
 
+type ProductsDB struct {
+	currency protos.CurrencyClient
+	log      *log.Logger
+}
+
+func NewProductsDB(c protos.CurrencyClient, l *log.Logger) *ProductsDB {
+	return &ProductsDB{c, l}
+}
+
 // GetProducts returns all products from the database
-func GetProducts() Products {
-	return productList
+func (p *ProductsDB) GetProducts(currency string) (Products, error) {
+	if currency == "" {
+		return productList, nil
+	}
+	rate, err := p.getRate(currency)
+	if err != nil {
+		p.log.Println("Unable to get rate currency", currency, " error ", err)
+		return nil, err
+	}
+	pr := Products{}
+	for _, p := range productList {
+		np := *p
+		np.Price = np.Price * rate
+		pr = append(pr, &np)
+	}
+
+	return pr, nil
 }
 
 // GetProductByID returns a single product which matches the id from the
 // database.
 // If a product is not found this function returns a ProductNotFound error
-func GetProductByID(id int) (*Product, error) {
+func (p *ProductsDB) GetProductByID(id int, currency string) (*Product, error) {
 	i := findIndexByProductID(id)
 	if id == -1 {
 		return nil, ErrProductNotFound
 	}
+	if currency == "" {
+		return productList[i], nil
+	}
+	rate, err := p.getRate(currency)
+	if err != nil {
+		p.log.Print("Unable to get rate currency", currency, " error ", err)
+		return nil, err
+	}
 
-	return productList[i], nil
+	np := *productList[i]
+	np.Price = np.Price * rate
+
+	return &np, nil
 }
 
 // UpdateProduct replaces a product in the database with the given
@@ -105,6 +146,16 @@ func findIndexByProductID(id int) int {
 	}
 
 	return -1
+}
+
+func (p *ProductsDB) getRate(destination string) (float64, error) {
+	// get exchange rate
+	rr := &protos.RateRequest{
+		Base:        protos.Currencies(protos.Currencies_value["EUR"]),
+		Destination: protos.Currencies(protos.Currencies_value[destination]),
+	}
+	resp, err := p.currency.GetRate(context.Background(), rr)
+	return resp.Rate, err
 }
 
 var productList = []*Product{
